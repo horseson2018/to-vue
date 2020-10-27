@@ -19,7 +19,7 @@ import {
 } from '../util/index'
 
 export function initGlobalAPI (Vue: GlobalAPI) {
-  // config
+  // config设置为只可读，写时报错
   const configDef = {}
   configDef.get = () => config
   if (process.env.NODE_ENV !== 'production') {

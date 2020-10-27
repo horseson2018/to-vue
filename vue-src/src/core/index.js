@@ -5,6 +5,7 @@ import { FunctionalRenderContext } from 'core/vdom/create-functional-component'
 
 initGlobalAPI(Vue)
 
+// 给Vue实例添加两个只读的属性
 Object.defineProperty(Vue.prototype, '$isServer', {
   get: isServerRendering
 })

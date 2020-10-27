@@ -14,9 +14,9 @@ let uid = 0
 
 export function initMixin (Vue: Class<Component>) {
   Vue.prototype._init = function (options?: Object) {
-    const vm: Component = this
-    // a uid
-    vm._uid = uid++
+    const vm: Component = this // 把Vue实例挂到vm上
+
+    vm._uid = uid++ // Vue实例唯一标识
 
     let startTag, endTag
     /* istanbul ignore if */
