@@ -1,6 +1,9 @@
 /* not type checking this file because flow doesn't play well with Proxy */
 
 import config from 'core/config'
+// warn：抛出警告的方法
+// makeMap：，
+// isNative：return typeof Ctor === 'function' && /native code/.test(Ctor.toString()); 查看浏览器的对于事件方法api的支持
 import { warn, makeMap, isNative } from '../util/index'
 
 let initProxy
@@ -10,7 +13,7 @@ if (process.env.NODE_ENV !== 'production') {
     'Infinity,undefined,NaN,isFinite,isNaN,' +
     'parseFloat,parseInt,decodeURI,decodeURIComponent,encodeURI,encodeURIComponent,' +
     'Math,Number,Date,Array,Object,Boolean,String,RegExp,Map,Set,JSON,Intl,' +
-    'require' // for Webpack/Browserify
+    'require' // for Webpack/Browserify 全局保留字
   )
 
   const warnNonPresent = (target, key) => {
@@ -36,16 +39,16 @@ if (process.env.NODE_ENV !== 'production') {
 
   const hasProxy =
     typeof Proxy !== 'undefined' && isNative(Proxy)
-
+  // 如果浏览器支持Proxy
   if (hasProxy) {
     const isBuiltInModifier = makeMap('stop,prevent,self,ctrl,shift,alt,meta,exact')
-    config.keyCodes = new Proxy(config.keyCodes, {
+    config.keyCodes = new Proxy(config.keyCodes, { // 当你改变keyCodes里面的值
       set (target, key, value) {
         if (isBuiltInModifier(key)) {
-          warn(`Avoid overwriting built-in modifier in config.keyCodes: .${key}`)
+          warn(`Avoid overwriting built-in modifier in config.keyCodes: .${key}`) // 上面isBuiltInModifier里的保留字提示该信息
           return false
         } else {
-          target[key] = value
+          target[key] = value // 不是isBuiltInModifier中的保留字则修改值
           return true
         }
       }
@@ -77,7 +80,7 @@ if (process.env.NODE_ENV !== 'production') {
 
   initProxy = function initProxy (vm) {
     if (hasProxy) {
-      // determine which proxy handler to use
+      // determine which proxy handler to use 译：决定使用哪个proxy处理
       const options = vm.$options
       const handlers = options.render && options.render._withStripped
         ? getHandler

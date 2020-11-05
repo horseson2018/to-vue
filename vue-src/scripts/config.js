@@ -26,9 +26,21 @@ const weexFactoryPlugin = {
 }
 
 const aliases = require('./alias')
+/** 
+ * aliases = {
+ *  vue: resolve('src/platforms/web/entry-runtime-with-compiler'),
+ *  compiler: resolve('src/compiler'),
+ *  core: resolve('src/core'),
+ *  shared: resolve('src/shared'),
+ *  web: resolve('src/platforms/web'),
+ *  weex: resolve('src/platforms/weex'),
+ *  server: resolve('src/server'),
+ *  sfc: resolve('src/sfc')
+ * }
+*/
 const resolve = p => {
-  const base = p.split('/')[0]
-  if (aliases[base]) {
+  const base = p.split('/')[0] // base = web
+  if (aliases[base]) { // aliases[base] = resolve('src/platforms/web')
     return path.resolve(aliases[base], p.slice(base.length + 1))
   } else {
     return path.resolve(__dirname, '../', p)

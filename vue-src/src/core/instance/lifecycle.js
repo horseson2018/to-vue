@@ -42,7 +42,7 @@ export function initLifecycle (vm: Component) {
   }
 
   vm.$parent = parent
-  vm.$root = parent ? parent.$root : vm
+  vm.$root = parent ? parent.$root : vm // 一直往上找找到 Vue实例（vm）为止
 
   vm.$children = []
   vm.$refs = {}

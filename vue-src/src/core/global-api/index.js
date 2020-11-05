@@ -11,8 +11,8 @@ import builtInComponents from '../components/index'
 import { observe } from 'core/observer/index'
 
 import {
-  warn,
-  extend,
+  warn, // 控制台抛出警告
+  extend, // 
   nextTick,
   mergeOptions,
   defineReactive
@@ -45,13 +45,13 @@ export function initGlobalAPI (Vue: GlobalAPI) {
   Vue.delete = del
   Vue.nextTick = nextTick
 
-  // 2.6 explicit observable API
-  Vue.observable = <T>(obj: T): T => {
-    observe(obj)
-    return obj
-  }
+  // 2.6 explicit observable API 译：清楚明白的可见的api
+  // Vue.observable = <T>(obj: T): T => {
+  //   observe(obj)
+  //   return obj
+  // }
 
-  Vue.options = Object.create(null)
+  Vue.options = Object.create(null) // Vue.options = {}
   ASSET_TYPES.forEach(type => {
     Vue.options[type + 's'] = Object.create(null)
   })

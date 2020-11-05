@@ -1,0 +1,26 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+  function makeMap (
+  str,
+  expectsLowerCase
+) {
+  const map = Object.create(null)
+  const list = str.split(',')
+  for (let i = 0; i < list.length; i++) {
+    map[list[i]] = true
+  }
+  return expectsLowerCase
+    ? val => map[val.toLowerCase()]
+    : val => map[val]
+}
+console.log(makeMap('stop,prevent,self,ctrl,shift,alt,meta,exact')('stop'))
+</script>
+</html>

@@ -19,20 +19,21 @@ export function initMixin (Vue: Class<Component>) {
     vm._uid = uid++ // Vue实例唯一标识
 
     let startTag, endTag
-    /* istanbul ignore if */
-    if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
+    /* istanbul ignore if */ // istanbul 一个代码覆盖率检测工具
+    if (process.env.NODE_ENV !== 'production' && config.performance && mark) { // config.performance = false
       startTag = `vue-perf-start:${vm._uid}`
       endTag = `vue-perf-end:${vm._uid}`
       mark(startTag)
     }
 
-    // a flag to avoid this being observed
+    // a flag to avoid this being observed 好像通过这玩儿来判断实例是否被观察？
     vm._isVue = true
-    // merge options
+    // merge options 合并配置项
     if (options && options._isComponent) {
       // optimize internal component instantiation
-      // since dynamic options merging is pretty slow, and none of the
-      // internal component options needs special treatment.
+      // since dynamic options merging is pretty slow, and none of the 
+      // internal component options needs special treatment. 
+      // 译：充分利用内部组件实例化，因为动态配置项合并的过程很慢，并且内部组件的配置项都无需特殊处理
       initInternalComponent(vm, options)
     } else {
       vm.$options = mergeOptions(
@@ -47,10 +48,10 @@ export function initMixin (Vue: Class<Component>) {
     } else {
       vm._renderProxy = vm
     }
-    // expose real self
+    // expose real self 译：把自己挂到自己的_self属性上
     vm._self = vm
-    initLifecycle(vm)
-    initEvents(vm)
+    initLifecycle(vm) // 给vm挂上一堆诸如 _isMounted _isDestroyed 标识，把$options里面的parent挂到外面的$parent，$root在这里指向Vue实例
+    initEvents(vm) // 给vm挂个_events = {}， _hasHookEvent = false
     initRender(vm)
     callHook(vm, 'beforeCreate')
     initInjections(vm) // resolve injections before data/props
@@ -73,7 +74,7 @@ export function initMixin (Vue: Class<Component>) {
 
 export function initInternalComponent (vm: Component, options: InternalComponentOptions) {
   const opts = vm.$options = Object.create(vm.constructor.options)
-  // doing this because it's faster than dynamic enumeration.
+  // doing this because it's faster than dynamic enumeration. 译：这么做是因为这样比动态列举对象的属性来的快
   const parentVnode = options._parentVnode
   opts.parent = options.parent
   opts._parentVnode = parentVnode
