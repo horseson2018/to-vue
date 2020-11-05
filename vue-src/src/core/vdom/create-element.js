@@ -25,7 +25,7 @@ const ALWAYS_NORMALIZE = 2
 
 // wrapper function for providing a more flexible interface
 // without getting yelled at by flow
-// 包装函数来提供一个更灵活且无flow告警的接口
+// 包装函数来提供一个更灵活且无flow告警的接口这里
 export function createElement (
   context: Component,
   tag: any,
