@@ -7,11 +7,11 @@ import { traverse } from '../observer/traverse'
 
 import {
   warn,
-  isDef,
+  isDef, // 判断是否有值，且值不为undefined和null
   isUndef,
-  isTrue,
+  isTrue, // 判断是否是boolean true值
   isObject,
-  isPrimitive,
+  isPrimitive, // 判断是否是原始数据类型string number symbol boolean
   resolveAsset
 } from '../util/index'
 
@@ -25,7 +25,7 @@ const ALWAYS_NORMALIZE = 2
 
 // wrapper function for providing a more flexible interface
 // without getting yelled at by flow
-// 包装函数来提供一个更灵活且无flow告警的接口这里
+// 包装函数来提供一个更灵活且无flow告警的接口
 export function createElement (
   context: Component,
   tag: any,
@@ -45,14 +45,14 @@ export function createElement (
   return _createElement(context, tag, data, children, normalizationType)
 }
 
-export function _createElement (
+export function _createElement ( // 这里其实可以不用 export 没地方用到
   context: Component,
   tag?: string | Class<Component> | Function | Object,
   data?: VNodeData,
   children?: any,
   normalizationType?: number
 ): VNode | Array<VNode> {
-  if (isDef(data) && isDef((data: any).__ob__)) {
+  if (isDef(data) && isDef((data: any).__ob__)) { // 如果data被定义过，且被监听了
     process.env.NODE_ENV !== 'production' && warn(
       `Avoid using observed data object as vnode data: ${JSON.stringify(data)}\n` +
       'Always create fresh vnode data objects in each render!',
@@ -68,7 +68,7 @@ export function _createElement (
     // in case of component :is set to falsy value
     return createEmptyVNode()
   }
-  // warn against non-primitive key
+  // warn against non-primitive key  使用string number symbol boolean类型的值来做关键字
   if (process.env.NODE_ENV !== 'production' &&
     isDef(data) && isDef(data.key) && !isPrimitive(data.key)
   ) {

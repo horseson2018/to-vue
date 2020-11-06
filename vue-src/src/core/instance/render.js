@@ -34,8 +34,8 @@ export function initRender (vm: Component) {
   // normalization is always applied for the public version, used in user-written render functions.
   vm.$createElement = (a, b, c, d) => createElement(vm, a, b, c, d, true)
 
-  // $attrs & $listeners are exposed for easier HOC creation.
-  // they need to be reactive so that HOCs using them are always updated
+  // $attrs & $listeners are exposed for easier HOC creation. $attrs和$listeners暴露出来能更方便地创建HOC（高阶组件：最终返回组件的组件）
+  // they need to be reactive so that HOCs using them are always updated 他们需要被reactive，这样HOCs使用$attrs & $listeners的时候，$attrs & $listeners能始终保持更新的状态
   const parentData = parentVnode && parentVnode.data
 
   /* istanbul ignore else */
