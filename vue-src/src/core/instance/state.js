@@ -19,7 +19,7 @@ import {
   noop,
   hasOwn,
   hyphenate,
-  isReserved,
+  isReserved, // 判断字符串开头是否是$或者_
   handleError,
   nativeWatch,
   validateProp,
