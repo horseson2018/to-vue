@@ -48,12 +48,14 @@ export class Observer {
     // 依赖收集器
     this.dep = new Dep()
     this.vmCount = 0
+    // 把 Observer实例 挂到 要观察的对象的__ob__ 上
     def(value, '__ob__', this)
     if (Array.isArray(value)) {
-      if (hasProto) { // 判断浏览器是否支持__proto__
-        protoAugment(value, arrayMethods)
+      // 用 arrayMethods 拦截数组的原生方法
+      if (hasProto) { // 判断浏览器是否支持__proto__，IE9 IE10不支持
+        protoAugment(value, arrayMethods) // 支持就用 arrayMethods 替换__proto__ 
       } else {
-        copyAugment(value, arrayMethods, arrayKeys)
+        copyAugment(value, arrayMethods, arrayKeys) // 否则用 defineProperty 把修改后的数组方法替换进数组对象里
       }
       this.observeArray(value)
     } else {
@@ -65,9 +67,7 @@ export class Observer {
    * Walk through all properties and convert them into
    * getter/setters. This method should only be called when
    * value type is Object.
-   * 遍历所有属性并将其转换为
-   * getter / setter。此方法只应时调用
-   * 值类型是对象
+   * 遍历所有属性并将其转换为 getter / setter。此方法只应在值类型是对象时调用
    */
   walk (obj: Object) {
     const keys = Object.keys(obj)
@@ -102,6 +102,7 @@ function protoAugment (target, src: Object) {
 /**
  * Augment a target Object or Array by defining
  * hidden properties.
+ * def 方法中通过设置属性 enumerable 不可枚举来隐藏该属性
  */
 /* istanbul ignore next */
 function copyAugment (target: Object, src: Object, keys: Array<string>) {
