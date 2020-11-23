@@ -45,14 +45,14 @@ export function createElement (
   return _createElement(context, tag, data, children, normalizationType)
 }
 
-export function _createElement ( // 这里其实可以不用 export 没地方用到
+export function _createElement (
   context: Component,
   tag?: string | Class<Component> | Function | Object,
   data?: VNodeData,
   children?: any,
   normalizationType?: number
 ): VNode | Array<VNode> {
-  if (isDef(data) && isDef((data: any).__ob__)) { // 如果data被定义过，且被监听了
+  if (isDef(data) && isDef(data.__ob__)) { // 如果data被定义过，且被监听了
     process.env.NODE_ENV !== 'production' && warn(
       `Avoid using observed data object as vnode data: ${JSON.stringify(data)}\n` +
       'Always create fresh vnode data objects in each render!',

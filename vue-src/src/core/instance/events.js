@@ -132,7 +132,7 @@ export function eventsMixin (Vue: Class<Component>) {
     let cbs = vm._events[event]
     if (cbs) {
       cbs = cbs.length > 1 ? toArray(cbs) : cbs
-      const args = toArray(arguments, 1)
+      const args = toArray(arguments, 1) // args 例：this.$emit(fn, ...) 取fn后面的参数
       const info = `event handler for "${event}"`
       for (let i = 0, l = cbs.length; i < l; i++) {
         invokeWithErrorHandling(cbs[i], vm, args, vm, info)

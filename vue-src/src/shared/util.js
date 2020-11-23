@@ -208,7 +208,7 @@ function nativeBind (fn: Function, ctx: Object): Function {
   return fn.bind(ctx)
 }
 
-export const bind = Function.prototype.bind
+export const bind = Function.prototype.bind // 基本都支持，包括ie9
   ? nativeBind
   : polyfillBind
 

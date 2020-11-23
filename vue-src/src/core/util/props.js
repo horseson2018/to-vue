@@ -24,6 +24,10 @@ export function validateProp (
   propsData: Object,
   vm?: Component
 ): any {
+  // console.log(key)
+  // console.log(propOptions)
+  // console.log(propsData)
+  // console.log(vm)
   const prop = propOptions[key]
   const absent = !hasOwn(propsData, key)
   let value = propsData[key]

@@ -53,7 +53,7 @@ export function initState (vm: Component) {
   if (opts.data) {
     initData(vm)
   } else {
-    observe(vm._data = {}, true /* asRootData */)
+    observe(vm._data = {}, true /* asRootData */) //  observe(vm._data = {}, true) = (vm._data = {};observe(vm._data, true))
   }
   if (opts.computed) initComputed(vm, opts.computed)
   if (opts.watch && opts.watch !== nativeWatch) {
@@ -78,8 +78,7 @@ function initProps (vm: Component, propsOptions: Object) {
     /* istanbul ignore else */
     if (process.env.NODE_ENV !== 'production') {
       const hyphenatedKey = hyphenate(key)
-      if (isReservedAttribute(hyphenatedKey) ||
-          config.isReservedAttr(hyphenatedKey)) {
+      if (isReservedAttribute(hyphenatedKey) || config.isReservedAttr(hyphenatedKey)) {
         warn(
           `"${hyphenatedKey}" is a reserved attribute and cannot be used as component prop.`,
           vm
@@ -109,8 +108,37 @@ function initProps (vm: Component, propsOptions: Object) {
   toggleObserving(true)
 }
 
+function initMethods (vm: Component, methods: Object) {
+  const props = vm.$options.props
+  for (const key in methods) {
+    if (process.env.NODE_ENV !== 'production') {
+      if (typeof methods[key] !== 'function') {
+        warn(
+          `Method "${key}" has type "${typeof methods[key]}" in the component definition. ` +
+          `Did you reference the function correctly?`,
+          vm
+        )
+      }
+      if (props && hasOwn(props, key)) {
+        warn(
+          `Method "${key}" has already been defined as a prop.`,
+          vm
+        )
+      }
+      if ((key in vm) && isReserved(key)) {
+        warn(
+          `Method "${key}" conflicts with an existing Vue instance method. ` +
+          `Avoid defining component methods that start with _ or $.`
+        )
+      }
+    }
+    vm[key] = typeof methods[key] !== 'function' ? noop : bind(methods[key], vm)
+  }
+}
+
 function initData (vm: Component) {
   let data = vm.$options.data
+  console.log(getData(data, vm))
   data = vm._data = typeof data === 'function'
     ? getData(data, vm)
     : data || {}
@@ -153,15 +181,15 @@ function initData (vm: Component) {
 
 export function getData (data: Function, vm: Component): any {
   // #7573 disable dep collection when invoking data getters
-  pushTarget()
+  // pushTarget()
   try {
-    return data.call(vm, vm)
-  } catch (e) {
-    handleError(e, vm, `data()`)
-    return {}
-  } finally {
-    popTarget()
-  }
+    return data.call(vm, vm) // 疑问：这里直接data()好像也行，data = function mergedInstanceDataFn () {...} 不接受参数，奇怪
+  } catch (e) {              // 答：使用vue.extend的时候 data = function mergedDataFn () {
+    handleError(e, vm, `data()`)                          // return mergeData(
+    return {}                                             //   typeof childVal === 'function' ? childVal.call(this, this) : childVal,
+  } finally {                                             //   typeof parentVal === 'function' ? parentVal.call(this, this) : parentVal
+    // popTarget()                                        // )
+  }                                                       //}
 }
 
 const computedWatcherOptions = { lazy: true }
@@ -259,34 +287,6 @@ function createGetterInvoker(fn) {
   }
 }
 
-function initMethods (vm: Component, methods: Object) {
-  const props = vm.$options.props
-  for (const key in methods) {
-    if (process.env.NODE_ENV !== 'production') {
-      if (typeof methods[key] !== 'function') {
-        warn(
-          `Method "${key}" has type "${typeof methods[key]}" in the component definition. ` +
-          `Did you reference the function correctly?`,
-          vm
-        )
-      }
-      if (props && hasOwn(props, key)) {
-        warn(
-          `Method "${key}" has already been defined as a prop.`,
-          vm
-        )
-      }
-      if ((key in vm) && isReserved(key)) {
-        warn(
-          `Method "${key}" conflicts with an existing Vue instance method. ` +
-          `Avoid defining component methods that start with _ or $.`
-        )
-      }
-    }
-    vm[key] = typeof methods[key] !== 'function' ? noop : bind(methods[key], vm)
-  }
-}
-
 function initWatch (vm: Component, watch: Object) {
   for (const key in watch) {
     const handler = watch[key]
@@ -317,27 +317,50 @@ function createWatcher (
 }
 
 export function stateMixin (Vue: Class<Component>) {
-  // flow somehow has problems with directly declared definition object
-  // when using Object.defineProperty, so we have to procedurally build up
-  // the object here.
-  const dataDef = {}
-  dataDef.get = function () { return this._data }
-  const propsDef = {}
-  propsDef.get = function () { return this._props }
-  if (process.env.NODE_ENV !== 'production') {
-    dataDef.set = function () {
+  // flow somehow has problems with directly declared definition object when using Object.defineProperty, so we have to procedurally build up the object here.
+  // flow 不知道什么原因 使用 Object.defineProperty 直接声明定义对象时会有问题，所以必须建立一个对象
+  // 下面的注释是我自己注的
+  // const dataDef = {}
+  // dataDef.get = function () { return this._data }
+  // const propsDef = {}
+  // propsDef.get = function () { return this._props }
+  // if (process.env.NODE_ENV !== 'production') {
+  //   dataDef.set = function () {
+  //     warn(
+  //       'Avoid replacing instance root $data. ' + // 避免修改$data （话说谁会修改这玩儿）
+  //       'Use nested data properties instead.',
+  //       this
+  //     )
+  //   }
+  //   propsDef.set = function () {
+  //     warn(`$props is readonly.`, this) // 避免修改$props
+  //   }
+  // }
+  
+  // Object.defineProperty(Vue.prototype, '$data', dataDef)
+  // Object.defineProperty(Vue.prototype, '$props', propsDef)
+
+  // 不管flow，可以直接这样写
+  Object.defineProperty(Vue.prototype, '$data', {
+    set () {
       warn(
         'Avoid replacing instance root $data. ' +
         'Use nested data properties instead.',
         this
       )
+    },
+    get () {
+      return this._data
     }
-    propsDef.set = function () {
+  })
+  Object.defineProperty(Vue.prototype, '$props', {
+    set () {
       warn(`$props is readonly.`, this)
+    },
+    get () {
+      return this._props
     }
-  }
-  Object.defineProperty(Vue.prototype, '$data', dataDef)
-  Object.defineProperty(Vue.prototype, '$props', propsDef)
+  })
 
   Vue.prototype.$set = set
   Vue.prototype.$delete = del

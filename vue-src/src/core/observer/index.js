@@ -119,6 +119,7 @@ function copyAugment (target: Object, src: Object, keys: Array<string>) {
  * 给一个值添加观察者实例，如果成功被观察则返回一个新的观察者实例，或者返回它已经拥有的观察者实例
  */
 export function observe (value: any, asRootData: ?boolean): Observer | void {
+  console.log(value)
   if (!isObject(value) || value instanceof VNode) { // value必须得是object，不能是VNode实例
     return
   }
@@ -157,6 +158,7 @@ export function defineReactive (
   shallow?: boolean
 ) {
   // dep存储依赖的变量，每个属性字段都有一个属于自己的dep，用于收集属于该字段的依赖
+  console.log()
   const dep = new Dep()
   /**
    * getOwnPropertyDescriptor
@@ -237,7 +239,7 @@ export function set (target: Array<any> | Object, key: any, val: any): any {
     target.splice(key, 1, val)
     return val
   }
-  // 对象切拥有key属性
+  // 对象且拥有key属性
   if (key in target && !(key in Object.prototype)) {
     target[key] = val
     return val
@@ -268,13 +270,13 @@ export function del (target: Array<any> | Object, key: any) {
   if (process.env.NODE_ENV !== 'production' &&
     (isUndef(target) || isPrimitive(target))
   ) {
-    warn(`Cannot delete reactive property on undefined, null, or primitive value: ${(target: any)}`)
+    warn(`Cannot delete reactive property on undefined, null, or primitive value: ${target}`)
   }
   if (Array.isArray(target) && isValidArrayIndex(key)) {
     target.splice(key, 1)
     return
   }
-  const ob = (target: any).__ob__
+  const ob = target.__ob__
   if (target._isVue || (ob && ob.vmCount)) {
     process.env.NODE_ENV !== 'production' && warn(
       'Avoid deleting properties on a Vue instance or its root $data ' +

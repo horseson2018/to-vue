@@ -15,7 +15,6 @@ let uid = 0
 export function initMixin (Vue: Class<Component>) {
   Vue.prototype._init = function (options?: Object) {
     const vm: Component = this // 把Vue实例挂到vm上
-
     vm._uid = uid++ // Vue实例唯一标识
 
     let startTag, endTag
@@ -29,7 +28,7 @@ export function initMixin (Vue: Class<Component>) {
     // a flag to avoid this being observed 好像通过这玩儿来判断实例是否被观察？
     vm._isVue = true
     // merge options 合并配置项
-    if (options && options._isComponent) {
+    if (options && options._isComponent) { // 组件走这里
       // optimize internal component instantiation
       // since dynamic options merging is pretty slow, and none of the 
       // internal component options needs special treatment. 
@@ -52,10 +51,10 @@ export function initMixin (Vue: Class<Component>) {
     vm._self = vm
     initLifecycle(vm) // 给vm挂上一堆诸如 _isMounted _isDestroyed 标识，把$options里面的parent挂到外面的$parent，$root在这里指向Vue实例
     initEvents(vm) // 给vm挂个_events = {}， _hasHookEvent = false
-    initRender(vm)
-    callHook(vm, 'beforeCreate')
+    initRender(vm) // _vnode  _staticTrees  $slots  $scopedSlots  _c  $createElement
+    callHook(vm, 'beforeCreate') // 触发 beforeCreate 钩子
     initInjections(vm) // resolve injections before data/props
-    initState(vm)
+    initState(vm) // 这里进行数据的绑定和observe
     initProvide(vm) // resolve provide after data/props
     callHook(vm, 'created')
 
@@ -74,6 +73,7 @@ export function initMixin (Vue: Class<Component>) {
 
 export function initInternalComponent (vm: Component, options: InternalComponentOptions) {
   const opts = vm.$options = Object.create(vm.constructor.options)
+  console.log(options)
   // doing this because it's faster than dynamic enumeration. 译：这么做是因为这样比动态列举对象的属性来的快
   const parentVnode = options._parentVnode
   opts.parent = options.parent
@@ -93,7 +93,7 @@ export function initInternalComponent (vm: Component, options: InternalComponent
 
 export function resolveConstructorOptions (Ctor: Class<Component>) {
   let options = Ctor.options
-  if (Ctor.super) {
+  if (Ctor.super) { // 使用 Vue.extend 的情况
     const superOptions = resolveConstructorOptions(Ctor.super)
     const cachedSuperOptions = Ctor.superOptions
     if (superOptions !== cachedSuperOptions) {

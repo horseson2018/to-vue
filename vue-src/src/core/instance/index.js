@@ -11,13 +11,13 @@ function Vue (options) {
   if (process.env.NODE_ENV !== 'production' && !(this instanceof Vue)) { // 不是new 出来的vue 浏览器会抛出警告
     warn('Vue is a constructor and should be called with the `new` keyword')
   }
-  this._init(options) // this._init is from 'initMixin'
+  this._init(options)
 }
 
-initMixin(Vue)
-stateMixin(Vue)
-eventsMixin(Vue)
-lifecycleMixin(Vue)
-renderMixin(Vue)
+initMixin(Vue) // 提供_init方法
+stateMixin(Vue) // $data $props $set $delete $watch
+eventsMixin(Vue) // $on $once $off $emit
+lifecycleMixin(Vue) // _update $forceUpdate $destroy
+renderMixin(Vue) // $nextTick _render
 
 export default Vue

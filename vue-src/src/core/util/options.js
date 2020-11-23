@@ -294,6 +294,7 @@ export function validateComponentName (name: string) {
 /**
  * Ensure all props option syntax are normalized into the
  * Object-based format.
+ * 确保所有的 props option 语法都是 Object-based 格式 props能接受['xxx', 'xxx']和{xx:{}, yy: {}} 两种格式，这里统一处理成后者
  */
 function normalizeProps (options: Object, vm: ?Component) {
   const props = options.props
@@ -331,6 +332,7 @@ function normalizeProps (options: Object, vm: ?Component) {
 
 /**
  * Normalize all injections into Object-based format
+ * 同props一样处理成{}格式
  */
 function normalizeInject (options: Object, vm: ?Component) {
   const inject = options.inject
@@ -398,8 +400,8 @@ export function mergeOptions (
     child = child.options
   }
 
-  normalizeProps(child, vm)
-  normalizeInject(child, vm)
+  normalizeProps(child, vm) // 把option中的props处理成object格式
+  normalizeInject(child, vm) // 同上
   normalizeDirectives(child)
 
   // Apply extends and mixins on the child options,
