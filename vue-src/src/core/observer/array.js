@@ -42,7 +42,7 @@ methodsToPatch.forEach(function (method) {
         inserted = args
         break
       // 针对splice方法：例：array.splice(2, 0, "three"); 
-      // 这里args为'2'（添加/删除项目的位置）,'0'(删除的项目数量),'three'(插入的内容)
+      // 这里args为['2'（添加/删除项目的位置）,'0'(删除的项目数量),'three'(插入的内容)]
       // 所以用slice(2)取下标为2和2之后所有插入的内容进行observe
       case 'splice':
         inserted = args.slice(2)

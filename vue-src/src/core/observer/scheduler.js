@@ -88,7 +88,6 @@ function flushSchedulerQueue () {
   for (index = 0; index < queue.length; index++) {
     watcher = queue[index]
     if (watcher.before) {
-      console.log('watcher.before()')
       watcher.before()
     }
     id = watcher.id

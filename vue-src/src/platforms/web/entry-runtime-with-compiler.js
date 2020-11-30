@@ -13,7 +13,11 @@ const idToTemplate = cached(id => {
   const el = query(id)
   return el && el.innerHTML
 })
-
+/**$mount()函数主要做了三件事：
+ * 判断挂载点是不是<body>或者<html>，因为挂载点会被自身模版替代掉，因此挂载点不能为<body>或者<html>；
+ * 判断渲染函数是否存在，如果渲染函数不存在，则构建渲染函数；
+ * 调用运行时vue的mount()函数，即runtime/index.js中的mount()；
+*/
 const mount = Vue.prototype.$mount
 Vue.prototype.$mount = function (
   el?: string | Element,
@@ -33,10 +37,11 @@ Vue.prototype.$mount = function (
   // resolve template/el and convert to render function
   if (!options.render) {
     let template = options.template
+    // 如果template存在，则通过template获取真正的 模板
     if (template) {
       if (typeof template === 'string') {
-        if (template.charAt(0) === '#') {
-          template = idToTemplate(template)
+        if (template.charAt(0) === '#') { // # id标识
+          template = idToTemplate(template) // 通过id标识来获取页面中的元素作为模板
           /* istanbul ignore if */
           if (process.env.NODE_ENV !== 'production' && !template) {
             warn(
@@ -45,6 +50,7 @@ Vue.prototype.$mount = function (
             )
           }
         }
+        //如果template是元素节点，则将template的innerHTML作为【模版】
       } else if (template.nodeType) {
         template = template.innerHTML
       } else {
@@ -53,15 +59,18 @@ Vue.prototype.$mount = function (
         }
         return this
       }
+    // 若template不存在，则将el元素的outerHTML作为【模版】
     } else if (el) {
       template = getOuterHTML(el)
     }
+    // 这里的 template 已经算是最终模板
     if (template) {
       /* istanbul ignore if */
       if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
         mark('compile')
       }
-
+      
+      // 重点：将模板template 用compileToFunctions转化为render方法，生成的options.render，在挂载组件的mountComponent函数中用
       const { render, staticRenderFns } = compileToFunctions(template, {
         outputSourceRange: process.env.NODE_ENV !== 'production',
         shouldDecodeNewlines,

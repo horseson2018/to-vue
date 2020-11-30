@@ -119,8 +119,7 @@ function copyAugment (target: Object, src: Object, keys: Array<string>) {
  * 给一个值添加观察者实例，如果成功被观察则返回一个新的观察者实例，或者返回它已经拥有的观察者实例
  */
 export function observe (value: any, asRootData: ?boolean): Observer | void {
-  console.log(value)
-  if (!isObject(value) || value instanceof VNode) { // value必须得是object，不能是VNode实例
+  if (!isObject(value) || value instanceof VNode) { // typeof value 必须得是object，换句话说就是[]或者{}，不能是VNode实例
     return
   }
   let ob: Observer | void
@@ -131,7 +130,7 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
     !isServerRendering() && // 不是服务端渲染
     (Array.isArray(value) || isPlainObject(value)) && // 是数组或对象
     Object.isExtensible(value) && // 可扩展（Object.preventExtensions，Object.seal 或 Object.freeze 方法都可以标记一个对象为不可扩展（non-extensible））
-    !value._isVue // 不是vue组件
+    !value._isVue //
   ) {
     ob = new Observer(value)
   }
@@ -158,7 +157,6 @@ export function defineReactive (
   shallow?: boolean
 ) {
   // dep存储依赖的变量，每个属性字段都有一个属于自己的dep，用于收集属于该字段的依赖
-  console.log()
   const dep = new Dep()
   /**
    * getOwnPropertyDescriptor
@@ -182,8 +180,10 @@ export function defineReactive (
     enumerable: true,
     configurable: true,
     get: function reactiveGetter () {
+      console.log('get', key)
       // 调用原属性的get方法返回值
       const value = getter ? getter.call(obj) : val
+      console.log(Dep.target)
       // 如果存在需要被收集的依赖
       if (Dep.target) {
         // 将依赖收集到dep中
@@ -200,6 +200,7 @@ export function defineReactive (
       return value
     },
     set: function reactiveSetter (newVal) {
+      console.log('set', key)
       const value = getter ? getter.call(obj) : val
       /* eslint-disable no-self-compare */
       if (newVal === value || (newVal !== newVal && value !== value)) {

@@ -138,7 +138,6 @@ function initMethods (vm: Component, methods: Object) {
 
 function initData (vm: Component) {
   let data = vm.$options.data
-  console.log(getData(data, vm))
   data = vm._data = typeof data === 'function'
     ? getData(data, vm)
     : data || {}
@@ -157,6 +156,7 @@ function initData (vm: Component) {
   let i = keys.length
   while (i--) {
     const key = keys[i]
+    // data中的key已经被 methods或者prop 注册了
     if (process.env.NODE_ENV !== 'production') {
       if (methods && hasOwn(methods, key)) {
         warn(
@@ -172,7 +172,7 @@ function initData (vm: Component) {
         vm
       )
     } else if (!isReserved(key)) {
-      proxy(vm, `_data`, key)
+      proxy(vm, `_data`, key) // 通过代理使得 this.xxx 获取到 this._data.xxx
     }
   }
   // observe data

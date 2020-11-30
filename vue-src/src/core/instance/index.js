@@ -5,7 +5,6 @@ import { eventsMixin } from './events'
 import { lifecycleMixin } from './lifecycle'
 import { warn } from '../util/index'
 
-
 // 构造函数
 function Vue (options) {
   if (process.env.NODE_ENV !== 'production' && !(this instanceof Vue)) { // 不是new 出来的vue 浏览器会抛出警告
