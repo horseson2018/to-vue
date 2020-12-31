@@ -1,7 +1,7 @@
 /* @flow */
 
 import {
-  isPreTag,
+  isPreTag, // tag === 'pre'
   mustUseProp,
   isReservedTag,
   getTagNamespace

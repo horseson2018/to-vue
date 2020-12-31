@@ -73,7 +73,6 @@ export function initMixin (Vue: Class<Component>) {
 
 export function initInternalComponent (vm: Component, options: InternalComponentOptions) {
   const opts = vm.$options = Object.create(vm.constructor.options)
-  console.log(options)
   // doing this because it's faster than dynamic enumeration. 译：这么做是因为这样比动态列举对象的属性来的快
   const parentVnode = options._parentVnode
   opts.parent = options.parent

@@ -180,10 +180,8 @@ export function defineReactive (
     enumerable: true,
     configurable: true,
     get: function reactiveGetter () {
-      console.log('get', key)
       // 调用原属性的get方法返回值
       const value = getter ? getter.call(obj) : val
-      console.log(Dep.target)
       // 如果存在需要被收集的依赖
       if (Dep.target) {
         // 将依赖收集到dep中

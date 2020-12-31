@@ -35,7 +35,7 @@ methodsToPatch.forEach(function (method) {
     const result = original.apply(this, args)
     const ob = this.__ob__
     let inserted
-    // 数组 Object.defineProperty 监听的是下标索引变化，所以这里只有以下三种方法会新增索引
+    // 数组 Object.defineProperty 监听的是下标索引变化，这里只有以下三种方法会新增索引(新增索引意味着原有索引不变，则defineproperty无法监听到变化)
     switch (method) {
       case 'push':
       case 'unshift':

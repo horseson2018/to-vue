@@ -38,6 +38,7 @@ Vue.prototype.$mount = function (
   if (!options.render) {
     let template = options.template
     // 如果template存在，则通过template获取真正的 模板
+    console.log(options)
     if (template) {
       if (typeof template === 'string') {
         if (template.charAt(0) === '#') { // # id标识
