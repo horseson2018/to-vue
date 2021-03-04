@@ -57,13 +57,6 @@ notify (v, obj) {
 ```
 subs是watcher的集合，所以watcher的[update方法](https://github.com/horseson2018/to-vue/blob/master/vue-src/src/core/observer/watcher.js#L167)
 ```javascript
-notify (v, obj) {
-  // ...接收key和obj接着往下传递
-  for (let i = 0, l = subs.length; i < l; i++) {
-    subs[i].update(v, obj)
-  }
-}
-
 update (v, obj) {
   //...
   queueWatcher(this, v, obj)
