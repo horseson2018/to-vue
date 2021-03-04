@@ -2,7 +2,7 @@
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
   (global = global || self, global.renderVueComponentToString = factory());
-}(this, function () { 'use strict';
+}(this, (function () { 'use strict';
 
   /*  */
 
@@ -184,37 +184,6 @@
   });
 
   /**
-   * Simple bind polyfill for environments that do not support it,
-   * e.g., PhantomJS 1.x. Technically, we don't need this anymore
-   * since native bind is now performant enough in most browsers.
-   * But removing it would mean breaking code that was able to run in
-   * PhantomJS 1.x, so this must be kept for backward compatibility.
-   */
-
-  /* istanbul ignore next */
-  function polyfillBind (fn, ctx) {
-    function boundFn (a) {
-      var l = arguments.length;
-      return l
-        ? l > 1
-          ? fn.apply(ctx, arguments)
-          : fn.call(ctx, a)
-        : fn.call(ctx)
-    }
-
-    boundFn._length = fn.length;
-    return boundFn
-  }
-
-  function nativeBind (fn, ctx) {
-    return fn.bind(ctx)
-  }
-
-  var bind = Function.prototype.bind
-    ? nativeBind
-    : polyfillBind;
-
-  /**
    * Mix properties into target object.
    */
   function extend (to, _from) {
@@ -318,27 +287,14 @@
     return -1
   }
 
-  /**
-   * Ensure a function is called only once.
-   */
-  function once (fn) {
-    var called = false;
-    return function () {
-      if (!called) {
-        called = true;
-        fn.apply(this, arguments);
-      }
-    }
-  }
-
   /*  */
 
   var isAttr = makeMap(
     'accept,accept-charset,accesskey,action,align,alt,async,autocomplete,' +
     'autofocus,autoplay,autosave,bgcolor,border,buffered,challenge,charset,' +
-    'checked,cite,class,code,codebase,color,cols,colspan,content,http-equiv,' +
-    'name,contenteditable,contextmenu,controls,coords,data,datetime,default,' +
-    'defer,dir,dirname,disabled,download,draggable,dropzone,enctype,method,for,' +
+    'checked,cite,class,code,codebase,color,cols,colspan,content,' +
+    'contenteditable,contextmenu,controls,coords,data,datetime,default,' +
+    'defer,dir,dirname,disabled,download,draggable,dropzone,enctype,for,' +
     'form,formaction,headers,height,hidden,high,href,hreflang,http-equiv,' +
     'icon,id,ismap,itemprop,keytype,kind,label,lang,language,list,loop,low,' +
     'manifest,max,maxlength,media,method,GET,POST,min,multiple,email,file,' +
@@ -346,7 +302,7 @@
     'preload,radiogroup,readonly,rel,required,reversed,rows,rowspan,sandbox,' +
     'scope,scoped,seamless,selected,shape,size,type,text,password,sizes,span,' +
     'spellcheck,src,srcdoc,srclang,srcset,start,step,style,summary,tabindex,' +
-    'target,title,type,usemap,value,width,wrap'
+    'target,title,usemap,value,width,wrap'
   );
 
   var unsafeAttrCharRE = /[>/="'\u0009\u000a\u000c\u0020]/; // eslint-disable-line no-control-regex
@@ -589,8 +545,8 @@
       vnode.tag,
       vnode.data,
       // #7975
-      // clone children array to avoid mutating original in case of cloning
-      // a child.
+      // clone children array to avoid mutating original in case of cloning a child.
+      // 在克隆 child 的情况下，克隆 children 数组来避免改变原始数据
       vnode.children && vnode.children.slice(),
       vnode.text,
       vnode.elm,
@@ -666,7 +622,7 @@
   var unicodeRegExp = /a-zA-Z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F-\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD/;
 
   /**
-   * Define a property.
+   * Define a property. 定义一个属性 主要是为了控制是否可枚举 enumerable 
    */
   function def (obj, key, val, enumerable) {
     Object.defineProperty(obj, key, {
@@ -698,11 +654,15 @@
 
   // Firefox has a "watch" function on Object.prototype...
   var nativeWatch = ({}).watch;
+
+  var supportsPassive = false;
   if (inBrowser) {
     try {
       var opts = {};
       Object.defineProperty(opts, 'passive', ({
         get: function get () {
+          /* istanbul ignore next */
+          supportsPassive = true;
         }
       })); // https://github.com/facebook/flow/issues/285
       window.addEventListener('test-passive', null, opts);
@@ -725,9 +685,6 @@
     }
     return _isServer
   };
-
-  // detect devtools
-  var devtools = inBrowser && window.__VUE_DEVTOOLS_GLOBAL_HOOK__;
 
   /* istanbul ignore next */
   function isNative (Ctor) {
@@ -901,7 +858,9 @@
     warn = function (msg, vm) {
       var trace = vm ? generateComponentTrace(vm) : '';
 
-      if (hasConsole && (!config.silent)) {
+      if (config.warnHandler) {
+        config.warnHandler.call(null, msg, vm, trace);
+      } else if (hasConsole && (!config.silent)) {
         console.error(("[Vue warn]: " + msg + trace));
       }
     };
@@ -1006,6 +965,12 @@
   Dep.prototype.notify = function notify () {
     // stabilize the subscriber list first
     var subs = this.subs.slice();
+    if ( !config.async) {
+      // subs aren't sorted in scheduler if not running async
+      // we need to sort them now to make sure they fire in correct
+      // order
+      subs.sort(function (a, b) { return a.id - b.id; });
+    }
     for (var i = 0, l = subs.length; i < l; i++) {
       subs[i].update();
     }
@@ -1020,11 +985,13 @@
   function pushTarget (target) {
     targetStack.push(target);
     Dep.target = target;
+    // console.log('pushTarget:', Dep.target)
   }
 
   function popTarget () {
     targetStack.pop();
     Dep.target = targetStack[targetStack.length - 1];
+    // console.log('popTarget:', Dep.target)
   }
 
   /*
@@ -1058,17 +1025,22 @@
       var result = original.apply(this, args);
       var ob = this.__ob__;
       var inserted;
+      // 数组 Object.defineProperty 监听的是下标索引变化，这里只有以下三种方法会新增索引(新增索引意味着原有索引不变，则defineproperty无法监听到变化)
       switch (method) {
         case 'push':
         case 'unshift':
           inserted = args;
           break
+        // 针对splice方法：例：array.splice(2, 0, "three"); 
+        // 这里args为['2'（添加/删除项目的位置）,'0'(删除的项目数量),'three'(插入的内容)]
+        // 所以用slice(2)取下标为2和2之后所有插入的内容进行observe
         case 'splice':
           inserted = args.slice(2);
           break
       }
+      // push，unshift，splice三个方法触发后，在这里手动observe，其他方法的变更会在当前的索引上进行更新，所以不需要再执行ob.observeArray
       if (inserted) { ob.observeArray(inserted); }
-      // notify change
+      // notify change 通过执行ob.dep.notify()将当前数组的变更通知给其订阅者，这样当使用重写后方法改变数组后，数组订阅者会将这边变化更新到页面中
       ob.dep.notify();
       return result
     });
@@ -1093,17 +1065,24 @@
    * object. Once attached, the observer converts the target
    * object's property keys into getter/setters that
    * collect dependencies and dispatch updates.
+   * Observe构造函数做了三件事：
+   * 1.为对象添加__ob__属性，__ob__中包含value数据对象本身、dep依赖收集器、vmCount
+   * 2.若对象是array类型，则进行array类型操作
+   * 3.若对象是object类型，则进行object类型操作
    */
   var Observer = function Observer (value) {
     this.value = value;
+    // 依赖收集器
     this.dep = new Dep();
     this.vmCount = 0;
+    // 把 Observer实例 挂到 要观察的对象的__ob__ 上
     def(value, '__ob__', this);
     if (Array.isArray(value)) {
-      if (hasProto) {
-        protoAugment(value, arrayMethods);
+      // 用 arrayMethods 拦截数组的原生方法
+      if (hasProto) { // 判断浏览器是否支持__proto__，IE9 IE10不支持
+        protoAugment(value, arrayMethods); // 支持就用 arrayMethods 替换__proto__ 
       } else {
-        copyAugment(value, arrayMethods, arrayKeys);
+        copyAugment(value, arrayMethods, arrayKeys); // 否则用 defineProperty 把修改后的数组方法替换进数组对象里
       }
       this.observeArray(value);
     } else {
@@ -1115,11 +1094,12 @@
    * Walk through all properties and convert them into
    * getter/setters. This method should only be called when
    * value type is Object.
+   * 遍历所有属性并将其转换为 getter / setter。此方法只应在值类型是对象时调用
    */
   Observer.prototype.walk = function walk (obj) {
     var keys = Object.keys(obj);
     for (var i = 0; i < keys.length; i++) {
-      defineReactive$$1(obj, keys[i]);
+      defineReactive(obj, keys[i]);
     }
   };
 
@@ -1137,6 +1117,7 @@
   /**
    * Augment a target Object or Array by intercepting
    * the prototype chain using __proto__
+   * 通过拦截原型链使用 __proto__ 来扩展 Object和Array
    */
   function protoAugment (target, src) {
     /* eslint-disable no-proto */
@@ -1147,6 +1128,7 @@
   /**
    * Augment a target Object or Array by defining
    * hidden properties.
+   * def 方法中通过设置属性 enumerable 不可枚举来隐藏该属性
    */
   /* istanbul ignore next */
   function copyAugment (target, src, keys) {
@@ -1160,20 +1142,21 @@
    * Attempt to create an observer instance for a value,
    * returns the new observer if successfully observed,
    * or the existing observer if the value already has one.
+   * 给一个值添加观察者实例，如果成功被观察则返回一个新的观察者实例，或者返回它已经拥有的观察者实例
    */
   function observe (value, asRootData) {
-    if (!isObject(value) || value instanceof VNode) {
+    if (!isObject(value) || value instanceof VNode) { // typeof value 必须得是是[]或者{}，不能是VNode实例
       return
     }
     var ob;
-    if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) {
+    if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) { // 已经被观察
       ob = value.__ob__;
     } else if (
-      shouldObserve &&
-      !isServerRendering() &&
-      (Array.isArray(value) || isPlainObject(value)) &&
-      Object.isExtensible(value) &&
-      !value._isVue
+      shouldObserve && // 默认shouldObserve为true
+      !isServerRendering() && // 不是服务端渲染
+      (Array.isArray(value) || isPlainObject(value)) && // 是数组或对象
+      Object.isExtensible(value) && // 可扩展（Object.preventExtensions，Object.seal 或 Object.freeze 方法都可以标记一个对象为不可扩展（non-extensible））
+      !value._isVue //
     ) {
       ob = new Observer(value);
     }
@@ -1185,16 +1168,26 @@
 
   /**
    * Define a reactive property on an Object.
+   * 对一个Object 定义一个响应式的属性
+   * defineReactive方法主要做了以下几件事：
+   * 1.为每个属性实例化一个dep依赖收集器，用于收集该属性的相关依赖。【通过getter、setter引用】
+   * 2.缓存属性原有的get和set方法，保证后面重写get、set方法时行为正常。
+   * 3.为每个属性创建childOb。（其实是一个对属性进行进行observe递归的过程，并将结果保存在childOb中。对象或数组属性的childOb为__ob__，其他属性的childOb为undefined）。【通过getter、setter引用】
+   * 4.将对象中的每一个属性都加上getter、setter方法。
    */
-  function defineReactive$$1 (
+  function defineReactive (
     obj,
     key,
     val,
     customSetter,
     shallow
   ) {
+    // dep存储依赖的变量，每个属性字段都有一个属于自己的dep，用于收集属于该字段的依赖
     var dep = new Dep();
-
+    /**
+     * getOwnPropertyDescriptor
+     * 返回指定对象上一个自有属性对应的属性描述符
+     */
     var property = Object.getOwnPropertyDescriptor(obj, key);
     if (property && property.configurable === false) {
       return
@@ -1206,18 +1199,25 @@
     if ((!getter || setter) && arguments.length === 2) {
       val = obj[key];
     }
-
+    // 为每个属性创建childOb，并且对每个属性进行observe递归
     var childOb = !shallow && observe(val);
+    // 为属性加入getter/setter方法
     Object.defineProperty(obj, key, {
       enumerable: true,
       configurable: true,
       get: function reactiveGetter () {
+        console.log('get', key);
+        // 调用原属性的get方法返回值
         var value = getter ? getter.call(obj) : val;
+        // 如果存在需要被收集的依赖
         if (Dep.target) {
+          // 将依赖收集到dep中
           dep.depend();
           if (childOb) {
+            // 每个对象的 __ob__.dep 也收集该依赖
             childOb.dep.depend();
             if (Array.isArray(value)) {
+              // 如果属性是array类型，进行dependArray操作
               dependArray(value);
             }
           }
@@ -1225,13 +1225,14 @@
         return value
       },
       set: function reactiveSetter (newVal) {
+        console.log('set', key);
         var value = getter ? getter.call(obj) : val;
         /* eslint-disable no-self-compare */
         if (newVal === value || (newVal !== newVal && value !== value)) {
           return
         }
         /* eslint-enable no-self-compare */
-        if (customSetter) {
+        if ( customSetter) {
           customSetter();
         }
         // #7981: for accessor properties without setter
@@ -1253,32 +1254,37 @@
    * already exist.
    */
   function set (target, key, val) {
-    if (isUndef(target) || isPrimitive(target)
+    if (
+      (isUndef(target) || isPrimitive(target))
     ) {
-      warn(("Cannot set reactive property on undefined, null, or primitive value: " + ((target))));
+      warn(("Cannot set reactive property on undefined, null, or primitive value: " + target));
     }
+    // 数组
     if (Array.isArray(target) && isValidArrayIndex(key)) {
       target.length = Math.max(target.length, key);
       target.splice(key, 1, val);
       return val
     }
+    // 对象且拥有key属性
     if (key in target && !(key in Object.prototype)) {
       target[key] = val;
       return val
     }
-    var ob = (target).__ob__;
-    if (target._isVue || (ob && ob.vmCount)) {
-      warn(
+    // 当target是对象，没有key属性的时候
+    var ob = target.__ob__;
+    if (target._isVue || (ob && ob.vmCount)) { // target是vue组件
+       warn(
         'Avoid adding reactive properties to a Vue instance or its root $data ' +
         'at runtime - declare it upfront in the data option.'
       );
       return val
     }
+    // 当target是对象，没有key属性，没有__ob__
     if (!ob) {
       target[key] = val;
       return val
     }
-    defineReactive$$1(ob.value, key, val);
+    defineReactive(ob.value, key, val);
     ob.dep.notify();
     return val
   }
@@ -1403,7 +1409,7 @@
   ) {
     if (!vm) {
       if (childVal && typeof childVal !== 'function') {
-        warn(
+         warn(
           'The "data" option should be a function ' +
           'that returns a per-instance value in component ' +
           'definitions.',
@@ -1466,7 +1472,7 @@
   ) {
     var res = Object.create(parentVal || null);
     if (childVal) {
-      assertObjectType(key, childVal, vm);
+       assertObjectType(key, childVal, vm);
       return extend(res, childVal)
     } else {
       return res
@@ -1572,6 +1578,7 @@
   /**
    * Ensure all props option syntax are normalized into the
    * Object-based format.
+   * 确保所有的 props option 语法都是 Object-based 格式 props能接受['xxx', 'xxx']和{xx:{}, yy: {}} 两种格式，这里统一处理成后者
    */
   function normalizeProps (options, vm) {
     var props = options.props;
@@ -1609,6 +1616,7 @@
 
   /**
    * Normalize all injections into Object-based format
+   * 同props一样处理成{}格式
    */
   function normalizeInject (options, vm) {
     var inject = options.inject;
@@ -1641,9 +1649,9 @@
     var dirs = options.directives;
     if (dirs) {
       for (var key in dirs) {
-        var def$$1 = dirs[key];
-        if (typeof def$$1 === 'function') {
-          dirs[key] = { bind: def$$1, update: def$$1 };
+        var def = dirs[key];
+        if (typeof def === 'function') {
+          dirs[key] = { bind: def, update: def };
         }
       }
     }
@@ -1676,8 +1684,8 @@
       child = child.options;
     }
 
-    normalizeProps(child, vm);
-    normalizeInject(child, vm);
+    normalizeProps(child, vm); // 把option中的props处理成object格式
+    normalizeInject(child, vm); // 同上
     normalizeDirectives(child);
 
     // Apply extends and mixins on the child options,
@@ -1736,7 +1744,7 @@
     if (hasOwn(assets, PascalCaseId)) { return assets[PascalCaseId] }
     // fallback to prototype chain
     var res = assets[id] || assets[camelizedId] || assets[PascalCaseId];
-    if (warnMissing && !res) {
+    if ( warnMissing && !res) {
       warn(
         'Failed to resolve ' + type.slice(0, -1) + ': ' + id,
         options
@@ -1755,6 +1763,10 @@
     propsData,
     vm
   ) {
+    // console.log(key)
+    // console.log(propOptions)
+    // console.log(propsData)
+    // console.log(vm)
     var prop = propOptions[key];
     var absent = !hasOwn(propsData, key);
     var value = propsData[key];
@@ -1798,7 +1810,7 @@
     }
     var def = prop.default;
     // warn against non-factory defaults for Object & Array
-    if (isObject(def)) {
+    if ( isObject(def)) {
       warn(
         'Invalid default value for prop "' + key + '": ' +
         'Props with type Object/Array must use a factory function ' +
@@ -2005,7 +2017,7 @@
   ) {
     var res;
     try {
-      res = args ? handler.apply(context, args) : handler.call(context);
+      res = args ? handler.apply(context, args) : handler.call(context); // 这里应该能直接写 res = handler.apply(context, args)
       if (res && !res._isVue && isPromise(res) && !res._handled) {
         res.catch(function (e) { return handleError(e, vm, info + " (Promise/async)"); });
         // issue #9511
@@ -2019,6 +2031,17 @@
   }
 
   function globalHandleError (err, vm, info) {
+    if (config.errorHandler) {
+      try {
+        return config.errorHandler.call(null, err, vm, info)
+      } catch (e) {
+        // if the user intentionally throws the original error in the handler,
+        // do not log it twice
+        if (e !== err) {
+          logError(e, null, 'config.errorHandler');
+        }
+      }
+    }
     logError(err, vm, info);
   }
 
@@ -2068,8 +2091,6 @@
       characterData: true
     });
   } else if (typeof setImmediate !== 'undefined' && isNative(setImmediate)) ;
-
-  /*  */
 
   /*  */
 
@@ -2195,8 +2216,6 @@
   }
 
   var isTextInputType = makeMap('text,number,password,search,email,tel,url');
-
-  /*  */
 
   /*  */
 
@@ -2777,7 +2796,7 @@
     // warn prevent and passive modifier
     /* istanbul ignore if */
     if (
-      warn &&
+       warn &&
       modifiers.prevent && modifiers.passive
     ) {
       warn(
@@ -2932,7 +2951,7 @@
   function transformNode (el, options) {
     var warn = options.warn || baseWarn;
     var staticClass = getAndRemoveAttr(el, 'class');
-    if (staticClass) {
+    if ( staticClass) {
       var res = parseText(staticClass, options.delimiters);
       if (res) {
         warn(
@@ -3015,7 +3034,7 @@
     genData: genData$1
   };
 
-  var commonjsGlobal = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
+  var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
   function createCommonjsModule(fn, module) {
   	return module = { exports: {} }, fn(module, module.exports), module.exports;
@@ -3025,10 +3044,10 @@
   (function(root) {
 
   	// Detect free variables `exports`.
-  	var freeExports = exports;
+  	var freeExports =  exports;
 
   	// Detect free variable `module`.
-  	var freeModule = module &&
+  	var freeModule =  module &&
   		module.exports == freeExports && module;
 
   	// Detect free variable `global`, from Node.js or Browserified code,
@@ -3405,8 +3424,8 @@
   function parseHTML (html, options) {
     var stack = [];
     var expectHTML = options.expectHTML;
-    var isUnaryTag$$1 = options.isUnaryTag || no;
-    var canBeLeftOpenTag$$1 = options.canBeLeftOpenTag || no;
+    var isUnaryTag = options.isUnaryTag || no;
+    var canBeLeftOpenTag = options.canBeLeftOpenTag || no;
     var index = 0;
     var last, lastTag;
     while (html) {
@@ -3520,7 +3539,7 @@
 
       if (html === last) {
         options.chars && options.chars(html);
-        if (!stack.length && options.warn) {
+        if ( !stack.length && options.warn) {
           options.warn(("Mal-formatted tag at end of template: \"" + html + "\""), { start: index + html.length });
         }
         break
@@ -3568,12 +3587,12 @@
         if (lastTag === 'p' && isNonPhrasingTag(tagName)) {
           parseEndTag(lastTag);
         }
-        if (canBeLeftOpenTag$$1(tagName) && lastTag === tagName) {
+        if (canBeLeftOpenTag(tagName) && lastTag === tagName) {
           parseEndTag(tagName);
         }
       }
 
-      var unary = isUnaryTag$$1(tagName) || !!unarySlash;
+      var unary = isUnaryTag(tagName) || !!unarySlash;
 
       var l = match.attrs.length;
       var attrs = new Array(l);
@@ -3587,7 +3606,7 @@
           name: args[1],
           value: decodeAttr(value, shouldDecodeNewlines)
         };
-        if (options.outputSourceRange) {
+        if ( options.outputSourceRange) {
           attrs[i].start = args.start + args[0].match(/^\s*/).length;
           attrs[i].end = args.end;
         }
@@ -3624,7 +3643,8 @@
       if (pos >= 0) {
         // Close all the open elements, up the stack
         for (var i = stack.length - 1; i >= pos; i--) {
-          if (i > pos || !tagName &&
+          if (
+            (i > pos || !tagName) &&
             options.warn
           ) {
             options.warn(
@@ -3806,7 +3826,7 @@
   /*  */
 
   var onRE = /^@|^v-on:/;
-  var dirRE = /^v-|^@|^:|^#/;
+  var dirRE =  /^v-|^@|^:|^#/;
   var forAliasRE = /([\s\S]*?)\s+(?:in|of)\s+([\s\S]*)/;
   var forIteratorRE = /,([^,\}\]]*)(?:,([^,\}\]]*))?$/;
   var stripParensRE = /^\(|\)$/g;
@@ -4032,7 +4052,7 @@
 
         if (isForbiddenTag(element) && !isServerRendering()) {
           element.forbidden = true;
-          warn$1(
+           warn$1(
             'Templates should only be responsible for mapping the state to the ' +
             'UI. Avoid placing tags with side-effects in your templates, such as ' +
             "<" + tag + ">" + ', as they will not be parsed.',
@@ -4083,7 +4103,7 @@
         // pop stack
         stack.length -= 1;
         currentParent = stack[stack.length - 1];
-        if (options.outputSourceRange) {
+        if ( options.outputSourceRange) {
           element.end = end$1;
         }
         closeElement(element);
@@ -4152,7 +4172,7 @@
             };
           }
           if (child) {
-            if (options.outputSourceRange) {
+            if ( options.outputSourceRange) {
               child.start = start;
               child.end = end;
             }
@@ -4169,7 +4189,7 @@
             text: text,
             isComment: true
           };
-          if (options.outputSourceRange) {
+          if ( options.outputSourceRange) {
             child.start = start;
             child.end = end;
           }
@@ -4344,7 +4364,7 @@
       if (children[i].type === 1) {
         return children[i]
       } else {
-        if (children[i].text !== ' ') {
+        if ( children[i].text !== ' ') {
           warn$1(
             "text \"" + (children[i].text.trim()) + "\" between v-if and v-else(-if) " +
             "will be ignored.",
@@ -4364,8 +4384,8 @@
   }
 
   function processOnce (el) {
-    var once$$1 = getAndRemoveAttr(el, 'v-once');
-    if (once$$1 != null) {
+    var once = getAndRemoveAttr(el, 'v-once');
+    if (once != null) {
       el.once = true;
     }
   }
@@ -4377,7 +4397,7 @@
     if (el.tag === 'template') {
       slotScope = getAndRemoveAttr(el, 'scope');
       /* istanbul ignore if */
-      if (slotScope) {
+      if ( slotScope) {
         warn$1(
           "the \"scope\" attribute for scoped slots have been deprecated and " +
           "replaced by \"slot-scope\" since 2.5. The new \"slot-scope\" attribute " +
@@ -4390,7 +4410,7 @@
       el.slotScope = slotScope || getAndRemoveAttr(el, 'slot-scope');
     } else if ((slotScope = getAndRemoveAttr(el, 'slot-scope'))) {
       /* istanbul ignore if */
-      if (el.attrsMap['v-for']) {
+      if ( el.attrsMap['v-for']) {
         warn$1(
           "Ambiguous combined usage of slot-scope and v-for on <" + (el.tag) + "> " +
           "(v-for takes higher priority). Use a wrapper <template> for the " +
@@ -4514,7 +4534,7 @@
   function processSlotOutlet (el) {
     if (el.tag === 'slot') {
       el.slotName = getBindingAttr(el, 'name');
-      if (el.key) {
+      if ( el.key) {
         warn$1(
           "`key` does not work on <slot> because slots are abstract outlets " +
           "and can possibly expand into multiple elements. " +
@@ -4558,6 +4578,7 @@
             name = name.slice(1, -1);
           }
           if (
+            
             value.trim().length === 0
           ) {
             warn$1(
@@ -4638,7 +4659,7 @@
             }
           }
           addDirective(el, name, rawName, value, arg, isDynamic, modifiers, list[i]);
-          if (name === 'model') {
+          if ( name === 'model') {
             checkForAliasModel(el, value);
           }
         }
@@ -4692,6 +4713,7 @@
     var map = {};
     for (var i = 0, l = attrs.length; i < l; i++) {
       if (
+        
         map[attrs[i].name] && !isIE && !isEdge
       ) {
         warn$1('duplicate attribute: ' + attrs[i].name, attrs[i]);
@@ -4870,10 +4892,18 @@
       genRadioModel(el, value, modifiers);
     } else if (tag === 'input' || tag === 'textarea') {
       genDefaultModel(el, value, modifiers);
-    } else {
+    } else if (!config.isReservedTag(tag)) {
       genComponentModel(el, value, modifiers);
       // component v-model doesn't need extra runtime
       return false
+    } else {
+      warn$2(
+        "<" + (el.tag) + " v-model=\"" + value + "\">: " +
+        "v-model is not supported on this element type. " +
+        'If you are working with contenteditable, it\'s recommended to ' +
+        'wrap a library dedicated for that purpose inside a custom component.',
+        el.rawAttrsMap['v-model']
+      );
     }
 
     // ensure runtime directive metadata
@@ -5196,7 +5226,7 @@
   /*  */
 
   function on (el, dir) {
-    if (dir.modifiers) {
+    if ( dir.modifiers) {
       warn("v-on without argument does not support modifiers.");
     }
     el.wrapListeners = function (code) { return ("_g(" + code + "," + (dir.value) + ")"); };
@@ -5204,7 +5234,7 @@
 
   /*  */
 
-  function bind$1 (el, dir) {
+  function bind (el, dir) {
     el.wrapData = function (code) {
       return ("_b(" + code + ",'" + (el.tag) + "'," + (dir.value) + "," + (dir.modifiers && dir.modifiers.prop ? 'true' : 'false') + (dir.modifiers && dir.modifiers.sync ? ',true' : '') + ")")
     };
@@ -5214,7 +5244,7 @@
 
   var baseDirectives = {
     on: on,
-    bind: bind$1,
+    bind: bind,
     cloak: noop
   };
 
@@ -5321,7 +5351,7 @@
         parent = parent.parent;
       }
       if (!key) {
-        state.warn(
+         state.warn(
           "v-once can only be used inside v-for that is keyed. ",
           el.rawAttrsMap['v-once']
         );
@@ -5381,7 +5411,8 @@
     var iterator1 = el.iterator1 ? ("," + (el.iterator1)) : '';
     var iterator2 = el.iterator2 ? ("," + (el.iterator2)) : '';
 
-    if (state.maybeComponent(el) &&
+    if (
+      state.maybeComponent(el) &&
       el.tag !== 'slot' &&
       el.tag !== 'template' &&
       !el.key
@@ -5513,7 +5544,9 @@
 
   function genInlineTemplate (el, state) {
     var ast = el.children[0];
-    if (el.children.length !== 1 || ast.type !== 1) {
+    if ( (
+      el.children.length !== 1 || ast.type !== 1
+    )) {
       state.warn(
         'Inline-template components must have exactly one child element.',
         { start: el.start }
@@ -5715,15 +5748,15 @@
           dynamic: attr.dynamic
         }); }))
       : null;
-    var bind$$1 = el.attrsMap['v-bind'];
-    if ((attrs || bind$$1) && !children) {
+    var bind = el.attrsMap['v-bind'];
+    if ((attrs || bind) && !children) {
       res += ",null";
     }
     if (attrs) {
       res += "," + attrs;
     }
-    if (bind$$1) {
-      res += (attrs ? '' : ',null') + "," + bind$$1;
+    if (bind) {
+      res += (attrs ? '' : ',null') + "," + bind;
     }
     return res + ')'
   }
@@ -5743,7 +5776,7 @@
     var dynamicProps = "";
     for (var i = 0; i < props.length; i++) {
       var prop = props[i];
-      var value = transformSpecialNewlines(prop.value);
+      var value =  transformSpecialNewlines(prop.value);
       if (prop.dynamic) {
         dynamicProps += (prop.name) + "," + value + ",";
       } else {
@@ -6439,7 +6472,7 @@
       vm
     ) {
       options = extend({}, options);
-      var warn$$1 = options.warn || warn;
+      var warn$1 = options.warn || warn;
       delete options.warn;
 
       /* istanbul ignore if */
@@ -6449,7 +6482,7 @@
           new Function('return 1');
         } catch (e) {
           if (e.toString().match(/unsafe-eval|CSP/)) {
-            warn$$1(
+            warn$1(
               'It seems you are using the standalone build of Vue.js in an ' +
               'environment with Content Security Policy that prohibits unsafe-eval. ' +
               'The template compiler cannot work in this environment. Consider ' +
@@ -6476,14 +6509,14 @@
         if (compiled.errors && compiled.errors.length) {
           if (options.outputSourceRange) {
             compiled.errors.forEach(function (e) {
-              warn$$1(
+              warn$1(
                 "Error compiling template:\n\n" + (e.msg) + "\n\n" +
                 generateCodeFrame(template, e.start, e.end),
                 vm
               );
             });
           } else {
-            warn$$1(
+            warn$1(
               "Error compiling template:\n\n" + template + "\n\n" +
               compiled.errors.map(function (e) { return ("- " + e); }).join('\n') + '\n',
               vm
@@ -6513,7 +6546,7 @@
       /* istanbul ignore if */
       {
         if ((!compiled.errors || !compiled.errors.length) && fnGenErrors.length) {
-          warn$$1(
+          warn$1(
             "Failed to generate render function:\n\n" +
             fnGenErrors.map(function (ref) {
               var err = ref.err;
@@ -6547,7 +6580,7 @@
         };
 
         if (options) {
-          if (options.outputSourceRange) {
+          if ( options.outputSourceRange) {
             // $flow-disable-line
             var leadingSpaceLength = template.match(/^\s*/)[0].length;
 
@@ -6621,7 +6654,6 @@
   /*  */
 
   var ref = createCompiler(baseOptions);
-  var compile = ref.compile;
   var compileToFunctions = ref.compileToFunctions;
 
   /*  */
@@ -6841,21 +6873,21 @@
       'Infinity,undefined,NaN,isFinite,isNaN,' +
       'parseFloat,parseInt,decodeURI,decodeURIComponent,encodeURI,encodeURIComponent,' +
       'Math,Number,Date,Array,Object,Boolean,String,RegExp,Map,Set,JSON,Intl,' +
-      'require' // for Webpack/Browserify
+      'require' // for Webpack/Browserify 全局保留字
     );
 
     var hasProxy =
       typeof Proxy !== 'undefined' && isNative(Proxy);
-
+    // 如果浏览器支持Proxy
     if (hasProxy) {
       var isBuiltInModifier = makeMap('stop,prevent,self,ctrl,shift,alt,meta,exact');
-      config.keyCodes = new Proxy(config.keyCodes, {
+      config.keyCodes = new Proxy(config.keyCodes, { // 当你改变keyCodes里面的值
         set: function set (target, key, value) {
           if (isBuiltInModifier(key)) {
-            warn(("Avoid overwriting built-in modifier in config.keyCodes: ." + key));
+            warn(("Avoid overwriting built-in modifier in config.keyCodes: ." + key)); // 上面isBuiltInModifier里的保留字提示该信息
             return false
           } else {
-            target[key] = value;
+            target[key] = value; // 不是isBuiltInModifier中的保留字则修改值
             return true
           }
         }
@@ -6917,13 +6949,13 @@
   var normalizeEvent = cached(function (name) {
     var passive = name.charAt(0) === '&';
     name = passive ? name.slice(1) : name;
-    var once$$1 = name.charAt(0) === '~'; // Prefixed last, checked first
-    name = once$$1 ? name.slice(1) : name;
+    var once = name.charAt(0) === '~'; // Prefixed last, checked first
+    name = once ? name.slice(1) : name;
     var capture = name.charAt(0) === '!';
     name = capture ? name.slice(1) : name;
     return {
       name: name,
-      once: once$$1,
+      once: once,
       capture: capture,
       passive: passive
     }
@@ -6952,17 +6984,17 @@
     on,
     oldOn,
     add,
-    remove$$1,
+    remove,
     createOnceHandler,
     vm
   ) {
-    var name, def$$1, cur, old, event;
+    var name, def, cur, old, event;
     for (name in on) {
-      def$$1 = cur = on[name];
+      def = cur = on[name];
       old = oldOn[name];
       event = normalizeEvent(name);
       if (isUndef(cur)) {
-        warn(
+         warn(
           "Invalid handler for event \"" + (event.name) + "\": got " + String(cur),
           vm
         );
@@ -6982,12 +7014,10 @@
     for (name in oldOn) {
       if (isUndef(on[name])) {
         event = normalizeEvent(name);
-        remove$$1(event.name, oldOn[name], event.capture);
+        remove(event.name, oldOn[name], event.capture);
       }
     }
   }
-
-  /*  */
 
   /*  */
 
@@ -7064,6 +7094,7 @@
 
   // wrapper function for providing a more flexible interface
   // without getting yelled at by flow
+  // 包装函数来提供一个更灵活且无flow告警的接口
   function createElement (
     context,
     tag,
@@ -7090,8 +7121,8 @@
     children,
     normalizationType
   ) {
-    if (isDef(data) && isDef((data).__ob__)) {
-      warn(
+    if (isDef(data) && isDef(data.__ob__)) { // 如果data被定义过，且被监听了
+       warn(
         "Avoid using observed data object as vnode data: " + (JSON.stringify(data)) + "\n" +
         'Always create fresh vnode data objects in each render!',
         context
@@ -7106,8 +7137,9 @@
       // in case of component :is set to falsy value
       return createEmptyVNode()
     }
-    // warn against non-primitive key
-    if (isDef(data) && isDef(data.key) && !isPrimitive(data.key)
+    // warn against non-primitive key  使用string number symbol boolean类型的值来做关键字
+    if (
+      isDef(data) && isDef(data.key) && !isPrimitive(data.key)
     ) {
       {
         warn(
@@ -7134,7 +7166,19 @@
     if (typeof tag === 'string') {
       var Ctor;
       ns = (context.$vnode && context.$vnode.ns) || config.getTagNamespace(tag);
-      if ((!data || !data.pre) && isDef(Ctor = resolveAsset(context.$options, 'components', tag))) {
+      if (config.isReservedTag(tag)) {
+        // platform built-in elements
+        if ( isDef(data) && isDef(data.nativeOn)) {
+          warn(
+            ("The .native modifier for v-on is only valid on components but it was used on <" + tag + ">."),
+            context
+          );
+        }
+        vnode = new VNode(
+          config.parsePlatformTagName(tag), data, children,
+          undefined, undefined, context
+        );
+      } else if ((!data || !data.pre) && isDef(Ctor = resolveAsset(context.$options, 'components', tag))) {
         // component
         vnode = createComponent(Ctor, data, context, children, tag);
       } else {
@@ -7252,7 +7296,7 @@
     if (scopedSlotFn) { // scoped slot
       props = props || {};
       if (bindObject) {
-        if (!isObject(bindObject)) {
+        if ( !isObject(bindObject)) {
           warn(
             'slot v-bind without argument expects an Object',
             this
@@ -7328,7 +7372,7 @@
   ) {
     if (value) {
       if (!isObject(value)) {
-        warn(
+         warn(
           'v-bind without argument expects an Object or Array value',
           this
         );
@@ -7436,7 +7480,7 @@
   function bindObjectListeners (data, value) {
     if (value) {
       if (!isPlainObject(value)) {
-        warn(
+         warn(
           'v-on without argument expects an Object value',
           this
         );
@@ -7487,7 +7531,7 @@
       var key = values[i];
       if (typeof key === 'string' && key) {
         baseObj[values[i]] = values[i + 1];
-      } else if (key !== '' && key !== null) {
+      } else if ( key !== '' && key !== null) {
         // null is a special value for explicitly removing a binding
         warn(
           ("Invalid value for dynamic directive argument (expected string or null): " + key),
@@ -7661,22 +7705,6 @@
 
   /*  */
 
-  var currentRenderingInstance = null;
-
-  /*  */
-
-  function ensureCtor (comp, base) {
-    if (
-      comp.__esModule ||
-      (hasSymbol && comp[Symbol.toStringTag] === 'Module')
-    ) {
-      comp = comp.default;
-    }
-    return isObject(comp)
-      ? base.extend(comp)
-      : comp
-  }
-
   function createAsyncPlaceholder (
     factory,
     data,
@@ -7702,121 +7730,10 @@
       return factory.resolved
     }
 
-    var owner = currentRenderingInstance;
-    if (owner && isDef(factory.owners) && factory.owners.indexOf(owner) === -1) {
-      // already pending
-      factory.owners.push(owner);
-    }
-
     if (isTrue(factory.loading) && isDef(factory.loadingComp)) {
       return factory.loadingComp
     }
-
-    if (owner && !isDef(factory.owners)) {
-      var owners = factory.owners = [owner];
-      var sync = true;
-      var timerLoading = null;
-      var timerTimeout = null
-
-      ;(owner).$on('hook:destroyed', function () { return remove(owners, owner); });
-
-      var forceRender = function (renderCompleted) {
-        for (var i = 0, l = owners.length; i < l; i++) {
-          (owners[i]).$forceUpdate();
-        }
-
-        if (renderCompleted) {
-          owners.length = 0;
-          if (timerLoading !== null) {
-            clearTimeout(timerLoading);
-            timerLoading = null;
-          }
-          if (timerTimeout !== null) {
-            clearTimeout(timerTimeout);
-            timerTimeout = null;
-          }
-        }
-      };
-
-      var resolve = once(function (res) {
-        // cache resolved
-        factory.resolved = ensureCtor(res, baseCtor);
-        // invoke callbacks only if this is not a synchronous resolve
-        // (async resolves are shimmed as synchronous during SSR)
-        if (!sync) {
-          forceRender(true);
-        } else {
-          owners.length = 0;
-        }
-      });
-
-      var reject = once(function (reason) {
-        warn(
-          "Failed to resolve async component: " + (String(factory)) +
-          (reason ? ("\nReason: " + reason) : '')
-        );
-        if (isDef(factory.errorComp)) {
-          factory.error = true;
-          forceRender(true);
-        }
-      });
-
-      var res = factory(resolve, reject);
-
-      if (isObject(res)) {
-        if (isPromise(res)) {
-          // () => Promise
-          if (isUndef(factory.resolved)) {
-            res.then(resolve, reject);
-          }
-        } else if (isPromise(res.component)) {
-          res.component.then(resolve, reject);
-
-          if (isDef(res.error)) {
-            factory.errorComp = ensureCtor(res.error, baseCtor);
-          }
-
-          if (isDef(res.loading)) {
-            factory.loadingComp = ensureCtor(res.loading, baseCtor);
-            if (res.delay === 0) {
-              factory.loading = true;
-            } else {
-              timerLoading = setTimeout(function () {
-                timerLoading = null;
-                if (isUndef(factory.resolved) && isUndef(factory.error)) {
-                  factory.loading = true;
-                  forceRender(false);
-                }
-              }, res.delay || 200);
-            }
-          }
-
-          if (isDef(res.timeout)) {
-            timerTimeout = setTimeout(function () {
-              timerTimeout = null;
-              if (isUndef(factory.resolved)) {
-                reject(
-                  "timeout (" + (res.timeout) + "ms)"
-                );
-              }
-            }, res.timeout);
-          }
-        }
-      }
-
-      sync = false;
-      // return in case resolved synchronously
-      return factory.loading
-        ? factory.loadingComp
-        : factory.resolved
-    }
   }
-
-  /*  */
-
-  /*  */
-
-  /*  */
 
   /*  */
 
@@ -7970,7 +7887,7 @@
 
   function callHook (vm, hook) {
     // #7573 disable dep collection when invoking lifecycle hooks
-    pushTarget();
+    // pushTarget()
     var handlers = vm.$options[hook];
     var info = hook + " hook";
     if (handlers) {
@@ -7981,7 +7898,7 @@
     if (vm._hasHookEvent) {
       vm.$emit('hook:' + hook);
     }
-    popTarget();
+    // popTarget()
   }
 
   /*  */
@@ -8022,17 +7939,13 @@
 
   /*  */
 
-  /*  */
-
-  /*  */
-
   function resolveInject (inject, vm) {
     if (inject) {
       // inject is :any because flow is not smart enough to figure out cached
       var result = Object.create(null);
       var keys = hasSymbol
-        ? Reflect.ownKeys(inject)
-        : Object.keys(inject);
+        ? Reflect.ownKeys(inject) // Reflect.ownKeys()返回所有属性key(包括方法) （有必要么？）
+        : Object.keys(inject); // Object.keys()返回属性key，但不包括不可枚举的属性和方法
 
       for (var i = 0; i < keys.length; i++) {
         var key = keys[i];
@@ -8066,7 +7979,7 @@
 
   function resolveConstructorOptions (Ctor) {
     var options = Ctor.options;
-    if (Ctor.super) {
+    if (Ctor.super) { // 使用 Vue.extend 的情况
       var superOptions = resolveConstructorOptions(Ctor.super);
       var cachedSuperOptions = Ctor.superOptions;
       if (superOptions !== cachedSuperOptions) {
@@ -8244,12 +8157,6 @@
 
   /*  */
 
-  /*  */
-
-  /*  */
-
-  /*  */
-
   // inline hooks to be invoked on component VNodes during patch
   var componentVNodeHooks = {
     init: function init (vnode, hydrating) {
@@ -8348,7 +8255,7 @@
     var asyncFactory;
     if (isUndef(Ctor.cid)) {
       asyncFactory = Ctor;
-      Ctor = resolveAsyncComponent(asyncFactory, baseCtor);
+      Ctor = resolveAsyncComponent(asyncFactory);
       if (Ctor === undefined) {
         // return a placeholder node for async component, which is rendered
         // as a comment node but preserves all the raw information for the node.
@@ -8956,4 +8863,4 @@
 
   return entryServerBasicRenderer;
 
-}));
+})));

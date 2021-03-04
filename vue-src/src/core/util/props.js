@@ -24,16 +24,12 @@ export function validateProp (
   propsData: Object,
   vm?: Component
 ): any {
-  // console.log(key)
-  // console.log(propOptions)
-  // console.log(propsData)
-  // console.log(vm)
   const prop = propOptions[key]
   const absent = !hasOwn(propsData, key)
   let value = propsData[key]
   // boolean casting
   const booleanIndex = getTypeIndex(Boolean, prop.type)
-  if (booleanIndex > -1) {
+  if (booleanIndex > -1) { // 是布尔值
     if (absent && !hasOwn(prop, 'default')) {
       value = false
     } else if (value === '' || value === hyphenate(key)) {
@@ -48,6 +44,7 @@ export function validateProp (
   // check default value
   if (value === undefined) {
     value = getPropDefaultValue(vm, prop, key)
+    console.log(value)
     // since the default value is a fresh copy,
     // make sure to observe it.
     const prevShouldObserve = shouldObserve
@@ -100,6 +97,7 @@ function getPropDefaultValue (vm: ?Component, prop: PropOptions, key: string): a
 
 /**
  * Assert whether a prop is valid.
+ * 断言
  */
 function assertProp (
   prop: PropOptions,

@@ -68,7 +68,7 @@ if (inBrowser && !isIE) {
 /**
  * Flush both queues and run the watchers.
  */
-function flushSchedulerQueue () {
+function flushSchedulerQueue (v, obj) {
   currentFlushTimestamp = getNow()
   flushing = true
   let watcher, id
@@ -92,7 +92,7 @@ function flushSchedulerQueue () {
     }
     id = watcher.id
     has[id] = null
-    watcher.run()
+    watcher.run(v, obj)
     // in dev build, check and stop circular updates.
     if (process.env.NODE_ENV !== 'production' && has[id] != null) {
       circular[id] = (circular[id] || 0) + 1
@@ -161,7 +161,7 @@ function callActivatedHooks (queue) {
  * Jobs with duplicate IDs will be skipped unless it's
  * pushed when the queue is being flushed.
  */
-export function queueWatcher (watcher: Watcher) {
+export function queueWatcher (watcher: Watcher, v, obj) {
   const id = watcher.id
   if (has[id] == null) {
     has[id] = true
@@ -181,10 +181,10 @@ export function queueWatcher (watcher: Watcher) {
       waiting = true
 
       if (process.env.NODE_ENV !== 'production' && !config.async) {
-        flushSchedulerQueue()
+        flushSchedulerQueue(v, obj)
         return
       }
-      nextTick(flushSchedulerQueue)
+      nextTick(() => flushSchedulerQueue(v, obj))
     }
   }
 }

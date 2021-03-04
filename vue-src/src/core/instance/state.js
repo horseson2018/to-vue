@@ -22,7 +22,7 @@ import {
   isReserved, // 判断字符串开头是否是$或者_
   handleError,
   nativeWatch,
-  validateProp,
+  validateProp, // 校验求值
   isPlainObject,
   isServerRendering,
   isReservedAttribute
@@ -219,7 +219,6 @@ function initComputed (vm: Component, computed: Object) {
         computedWatcherOptions
       )
     }
-
     // component-defined computed properties are already defined on the
     // component prototype. We only need to define computed properties defined
     // at instantiation here.
@@ -376,7 +375,7 @@ export function stateMixin (Vue: Class<Component>) {
     }
     options = options || {}
     options.user = true
-    const watcher = new Watcher(vm, expOrFn, cb, options)
+    const watcher = new Watcher(vm, expOrFn, cb, options, undefined, true)
     if (options.immediate) {
       try {
         cb.call(vm, watcher.value)

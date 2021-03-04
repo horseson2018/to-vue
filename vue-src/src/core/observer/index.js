@@ -119,7 +119,7 @@ function copyAugment (target: Object, src: Object, keys: Array<string>) {
  * 给一个值添加观察者实例，如果成功被观察则返回一个新的观察者实例，或者返回它已经拥有的观察者实例
  */
 export function observe (value: any, asRootData: ?boolean): Observer | void {
-  if (!isObject(value) || value instanceof VNode) { // typeof value 必须得是object，换句话说就是[]或者{}，不能是VNode实例
+  if (!isObject(value) || value instanceof VNode) { // typeof value 必须得是是[]或者{}，不能是VNode实例
     return
   }
   let ob: Observer | void
@@ -198,7 +198,6 @@ export function defineReactive (
       return value
     },
     set: function reactiveSetter (newVal) {
-      console.log('set', key)
       const value = getter ? getter.call(obj) : val
       /* eslint-disable no-self-compare */
       if (newVal === value || (newVal !== newVal && value !== value)) {
@@ -216,7 +215,7 @@ export function defineReactive (
         val = newVal
       }
       childOb = !shallow && observe(newVal)
-      dep.notify()
+      dep.notify(key, obj)
     }
   })
 }

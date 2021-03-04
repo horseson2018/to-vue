@@ -47,9 +47,11 @@ export default class Watcher {
     expOrFn: string | Function,
     cb: Function,
     options?: ?Object,
-    isRenderWatcher?: boolean
+    isRenderWatcher?: boolean,
+    isWatch: boolean
   ) {
     this.vm = vm
+    this.isWatch = isWatch
     if (isRenderWatcher) {
       vm._watcher = this
     }
@@ -75,8 +77,10 @@ export default class Watcher {
     this.expression = process.env.NODE_ENV !== 'production'
       ? expOrFn.toString()
       : ''
+
     // parse expression for getter
     if (typeof expOrFn === 'function') {
+      
       this.getter = expOrFn
     } else {
       this.getter = parsePath(expOrFn)
@@ -111,8 +115,7 @@ export default class Watcher {
         throw e
       }
     } finally {
-      // "touch" every property so they are all tracked as
-      // dependencies for deep watching
+      // "touch" every property so they are all tracked as dependencies for deep watching
       if (this.deep) {
         traverse(value)
       }
@@ -161,14 +164,14 @@ export default class Watcher {
    * Subscriber interface.
    * Will be called when a dependency changes.
    */
-  update () {
+  update (v, obj) {
     /* istanbul ignore else */
     if (this.lazy) {
       this.dirty = true
     } else if (this.sync) {
-      this.run()
+      this.run(v, obj)
     } else {
-      queueWatcher(this)
+      queueWatcher(this, v, obj)
     }
   }
 
@@ -176,7 +179,7 @@ export default class Watcher {
    * Scheduler job interface.
    * Will be called by the scheduler.
    */
-  run () {
+  run (v, obj) {
     if (this.active) {
       const value = this.get()
       if (
@@ -192,12 +195,12 @@ export default class Watcher {
         this.value = value
         if (this.user) {
           try {
-            this.cb.call(this.vm, value, oldValue)
+            this.cb.call(this.vm, value, oldValue, v, obj)
           } catch (e) {
             handleError(e, this.vm, `callback for watcher "${this.expression}"`)
           }
         } else {
-          this.cb.call(this.vm, value, oldValue)
+          this.cb.call(this.vm, value, oldValue, v, obj)
         }
       }
     }
